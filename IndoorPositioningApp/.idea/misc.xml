@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/Users/RiccardoMenon/Desktop/SCSLab/IndoorPositioning/IndoorPositioningApp/App/src/main/res/layout/activity_fingerprint.xml" value="0.36666666666666664" />
+        <entry key="..\:/Users/RiccardoMenon/Desktop/SCSLab/IndoorPositioning/IndoorPositioningApp/App/src/main/res/layout/activity_indoor_localisation.xml" value="0.19791666666666666" />
+        <entry key="App/src/main/res/layout/activity_fingerprint.xml" value="0.25" />
+        <entry key="App/src/main/res/layout/activity_indoor_localisation.xml" value="0.1743659420289855" />
+        <entry key="App/src/main/res/layout/activity_main.xml" value="0.3021760953401459" />
+        <entry key="app/src/main/res/drawable/divider.xml" value="0.16770833333333332" />
+        <entry key="app/src/main/res/layout/activity_fingerprint.xml" value="0.335" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.375" />
+        <entry key="app/src/main/res/layout/activity_network.xml" value="0.19185597896575926" />
+        <entry key="app/src/main/res/layout/list_item.xml" value="0.1515625" />
+      </map>
+    </option>
+  </component>
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" project-jdk-name="Embedded JDK" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+</project>
