@@ -2,24 +2,20 @@ package com.example.datacollectionapp_afp;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.content.Context;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Bundle;
-import android.view.View;
+import android.os.Handler;
+import android.util.Log;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     // Static string to transfer the intent on another class
@@ -47,6 +43,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     boolean plotNow = false;
     int timestamp = 0;
     LineGraphSeries<DataPoint> series;
+    private LineGraphSeries<DataPoint> accelX;
+    private LineGraphSeries<DataPoint> accelY;
+    private LineGraphSeries<DataPoint> accelZ;
+    private long lastUpdateTimestamp = 0;
+    private long startTime = -1;
+    private double lastX = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,8 +74,42 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         lightSensor = sm.getDefaultSensor(Sensor.TYPE_LIGHT); // not sure why we need light sensor lol
         proxSensor = sm.getDefaultSensor(Sensor.TYPE_PROXIMITY);
 
+        graphViews();
+
+    }
+
+    private void graphViews(){
         // Load views
-        GraphView graph = (GraphView) findViewById(R.id.graph);
+        GraphView accelGraph = findViewById(R.id.graph);
+
+        // Configure viewport settings
+        accelGraph.getViewport().setXAxisBoundsManual(true);
+        accelGraph.getViewport().setMinX(0);
+        accelGraph.getViewport().setMaxX(1); // Adjust this value to set the viewport width
+        accelGraph.getViewport().setScrollable(true); // Enables horizontal scrolling
+
+        // data from accelerometer
+        accelX = new LineGraphSeries<>();
+        accelX.setColor(Color.RED);
+        accelX.setThickness(8);
+        accelGraph.addSeries(accelX);
+
+        accelY = new LineGraphSeries<>();
+        accelY.setColor(Color.GREEN);
+        accelY.setThickness(8);
+        accelGraph.addSeries(accelY);
+
+        accelZ = new LineGraphSeries<>();
+        accelZ.setColor(Color.BLUE);
+        accelZ.setThickness(8);
+        accelGraph.addSeries(accelZ);
+    }
+
+    // add random data to graph
+    private void addEntry(double elapsedTime, float x, float y, float z) {
+        accelX.appendData(new DataPoint(elapsedTime, x), true, 100);
+        accelY.appendData(new DataPoint(elapsedTime, y), true, 100);
+        accelZ.appendData(new DataPoint(elapsedTime, z), true, 100);
     }
 
     private void askPermission(){
@@ -106,10 +142,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
     }
 
+    private int samplesCount = 0;
+
     @Override
     public void onSensorChanged(SensorEvent event) {
+
+        if (startTime == -1) {
+            startTime = System.currentTimeMillis();
+        }
+
+        long currentTime = System.currentTimeMillis();
+
+
         switch(event.sensor.getType()) {
-            case Sensor.TYPE_ACCELEROMETER:
+            case Sensor.TYPE_ACCELEROMETER:// Desired interval in milliseconds (10ms for 100 samples per second
+                double elapsedTimeInSeconds = (currentTime - startTime)  / 1000.0;
+                // Update the graph
+                lastX += (1.0 / 100.0); // Increment lastX by 1/100 for each sample
+                addEntry(lastX, event.values[0], event.values[1], event.values[2]);
                 break;
             case Sensor.TYPE_GYROSCOPE:
                 break;
@@ -122,11 +172,36 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             case Sensor.TYPE_PROXIMITY:
                 break;
         }
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        // real time data with thread that append data to the graph
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                // we add 100 new entries
+//                for(int i =0; i<100; i++){
+//                    runOnUiThread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//                            addEntry();
+//                        }
+//                    });
+//
+//                    // sleep to slow down the add of entries
+//                    try {
+//                        Thread.sleep(600);
+//                    } catch (InterruptedException e) {
+//                        // manage error ...
+//                        // Now we can see the result on emulator
+//                    }
+//                }
+//            }
+//        }).start();
+
         // for sensors with 100 samples in microseconds
         int rate100S = (int) (1/1e-6)/100;
         sm.registerListener(this,accelSensor,rate100S);
