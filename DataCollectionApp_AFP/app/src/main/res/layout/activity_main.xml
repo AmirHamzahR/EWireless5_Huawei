@@ -1,30 +1,136 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    android:layout_height="match_parent">
 
+    <!-- Start button -->
+    <Button
+        android:id="@+id/startButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:onClick="onClickStartButton"
+        android:text="Start" />
+
+    <!-- Stop button -->
+    <Button
+        android:id="@+id/stopButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Stop"
+        android:onClick="onClickStopButton"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="16dp"/>
+
+    <!-- Scrollview to hold the graphs -->
+
+    <Chronometer
+        android:id="@+id/chronometer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="22dp"
+        android:layout_marginEnd="164dp"
+        android:layout_marginBottom="16dp"
+        android:textSize="24sp" />
+
+    <ScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/startButton"
+        android:fillViewport="true"
+        android:scrollbars="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.jjoe64.graphview.GraphView
+                android:id="@+id/accelGraph"
+                android:layout_width="match_parent"
+                android:layout_height="200dp" />
+
+            <TextView
+                android:id="@+id/accelData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Accelerometer Data" />
+
+            <com.jjoe64.graphview.GraphView
+                android:id="@+id/gyroGraph"
+                android:layout_width="match_parent"
+                android:layout_height="200dp" />
+
+            <TextView
+                android:id="@+id/gyroData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Gyroscope Data" />
+
+            <com.jjoe64.graphview.GraphView
+                android:id="@+id/magnetoGraph"
+                android:layout_width="match_parent"
+                android:layout_height="200dp" />
+
+            <TextView
+                android:id="@+id/magnetoData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Magnetometer Data" />
+
+            <com.jjoe64.graphview.GraphView
+                android:id="@+id/baroGraph"
+                android:layout_width="match_parent"
+                android:layout_height="200dp" />
+
+            <TextView
+                android:id="@+id/baroData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Barometer Data" />
+
+            <com.jjoe64.graphview.GraphView
+                android:id="@+id/lightGraph"
+                android:layout_width="match_parent"
+                android:layout_height="200dp" />
+
+            <TextView
+                android:id="@+id/lightData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Light Sensor Data" />
+
+            <com.jjoe64.graphview.GraphView
+                android:id="@+id/proxGraph"
+                android:layout_width="match_parent"
+                android:layout_height="200dp" />
+
+            <TextView
+                android:id="@+id/proxData"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Proximity Sensor Data" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- Textview to display sensor data -->
     <TextView
         android:id="@+id/textView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="TextView"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/graph" />
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
 
-    <com.jjoe64.graphview.GraphView
-        android:id="@+id/graph"
-        android:layout_width="match_parent"
-        android:layout_height="200dip"
-        app:layout_constraintBottom_toTopOf="@+id/textView"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-</androidx.constraintlayout.widget.ConstraintLayout>
-
+</RelativeLayout>
