@@ -121,16 +121,57 @@
                 android:layout_height="wrap_content"
                 android:text="Proximity Sensor Data" />
 
+            <TextView
+                android:id="@+id/wifiStatusView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Wifi Status" />
+
+            <TextView
+                android:id="@+id/wifiInfoView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Wifi Info" />
+
+            <TextView
+                android:id="@+id/wifiConnectionView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Wifi Connection" />
+
+            <TextView
+                android:id="@+id/wifiTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Wifi Details" />
+
+            <TextView
+                android:id="@+id/gnssStatusView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GNSS Status"/>
+
+            <TextView
+                android:id="@+id/gnssInfoView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="GNSS Info"/>
+
+            <TextView
+                android:id="@+id/locationChangedData"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Changed Location Data"/>
+
+            <TextView
+                android:id="@+id/satellitesData"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Satellites Info"/>
+
         </LinearLayout>
     </ScrollView>
 
     <!-- Textview to display sensor data -->
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true" />
 
 </RelativeLayout>
