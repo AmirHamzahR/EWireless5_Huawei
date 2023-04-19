@@ -31,7 +31,6 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.text.InputType;
-import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -50,11 +49,12 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.TreeMap;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     // Static string to transfer the intent on another class
@@ -162,6 +162,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private double lastBaroTimestamp = 0;
     private double lastLightTimestamp = 0;
     private double lastProxTimestamp = 0;
+
+    // String to be saved as CSV format
+    private StringBuilder accelCsv = new StringBuilder();
+    private StringBuilder gyroCsv = new StringBuilder();
+    private StringBuilder magnetoCsv = new StringBuilder();
+    private StringBuilder baroCsv = new StringBuilder();
+    private StringBuilder lightCsv = new StringBuilder();
+    private StringBuilder proxCsv = new StringBuilder();
 
 
 
@@ -405,7 +413,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
                 List<ScanResult> results = wifiManager.getScanResults();
                 int numAPs = results.size();
-                Log.i("WiFi Scan", " Number of APs: " + numAPs);
+//                Log.i("WiFi Scan", " Number of APs: " + numAPs);
                 String wifiStr = "";
 
                 // Get the elapsed time from the chronometer in milliseconds
@@ -475,7 +483,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 FileOutputStream fos = new FileOutputStream(file);
                 fos.write(data.getBytes());
                 fos.close();
-                Log.d("Wifi", "Saved to " + file.getAbsolutePath());
+//                Log.d("Wifi", "Saved to " + file.getAbsolutePath());
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             } catch (IOException e) {
@@ -530,7 +538,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 try {
                     provider = locationManager.getProvider(providerStr);
                 } catch (Exception e) {
-                    Log.i("OnCreate", "getProvider not responding properly");
+//                    Log.i("OnCreate", "getProvider not responding properly");
                     gnssFeaturesText = " GNSS: No Location Providers";
                     gnssStatusView.setBackgroundColor(0xFFFF0000); // red color
                 }
@@ -553,7 +561,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
-            Log.i("LocationChanged", "Gps data");
+//            Log.i("LocationChanged", "Gps data");
             double latitude = location.getLatitude(), longitude = location.getLongitude(), altitude = location.getAltitude();
             float bearing = location.getBearing(), accuracy = location.getAccuracy(), speed = location.getSpeed();
             double sensorTimestamp = location.getTime() / 1000.0;
@@ -798,7 +806,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
 
             // Save all the sensors in a single csv file named by the user
-            showSaveDialog();
+            showSaveDialogSensors();
 
 
             // Saving the wifi data in a single csv file named by the user
@@ -807,17 +815,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sensorRunning = false;
     }
 
-    private void writeDataToCsv(String fileName, List<LineGraphSeries<DataPoint>> seriesList, List<String> headers) {
-        if (seriesList.size() != headers.size()) {
-            Toast.makeText(this, "Error: Series and headers lists must have the same size", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
+    private void writeDataToCsv(String fileName, List<StringBuilder> csvDataList, List<String> headers) {
         try {
             File downloadsDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
             File file = new File(downloadsDirectory, fileName + ".csv");
             FileWriter writer = new FileWriter(file);
-
 
             // Write header line
             for (int i = 0; i < headers.size(); i++) {
@@ -831,44 +833,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
             // Find the maximum number of rows
             int maxRows = 0;
-            for (LineGraphSeries<DataPoint> series : seriesList) {
-                double minX = series.getLowestValueX(); // Get the minimum x-axis value
-                double maxX = series.getHighestValueX(); // Get the maximum x-axis value
-                Iterator<DataPoint> dataPoints = series.getValues(minX, maxX);
-                int rowCount = 0;
-                while (dataPoints.hasNext()) {
-                    dataPoints.next();
-                    rowCount++;
-                }
-                maxRows = Math.max(maxRows, rowCount);
+            for (StringBuilder csvData : csvDataList) {
+                String[] lines = csvData.toString().split("\n");
+                maxRows = Math.max(maxRows, lines.length);
             }
 
-            // Loop through the series list and write data points
+            // Loop through the csvDataList and write data points
             for (int row = 0; row < maxRows; row++) {
-                for (int i = 0; i < seriesList.size(); i++) {
-                    LineGraphSeries<DataPoint> series = seriesList.get(i);
-
-                    double minX = series.getLowestValueX(); // Get the minimum x-axis value
-                    double maxX = series.getHighestValueX(); // Get the maximum x-axis value
-                    Iterator<DataPoint> dataPoints = series.getValues(minX, maxX);
-
-                    // Move iterator to the current row
-                    int currentRow = 0;
-                    DataPoint dataPoint = null;
-                    while (dataPoints.hasNext() && currentRow <= row) {
-                        dataPoint = dataPoints.next();
-                        currentRow++;
-                    }
+                for (int i = 0; i < csvDataList.size(); i++) {
+                    StringBuilder csvData = csvDataList.get(i);
+                    String[] lines = csvData.toString().split("\n");
 
                     // Write data point if available
-                    if (currentRow == row + 1) {
-                        writer.append(String.format(Locale.getDefault(), "%.3f,%f", dataPoint.getX(), dataPoint.getY()));
+                    if (row < lines.length) {
+                        writer.append(lines[row]);
                     } else {
                         writer.append(",");
                     }
 
                     // Add a comma separator if not the last column
-                    if (i < seriesList.size() - 1) {
+                    if (i < csvDataList.size() - 1) {
                         writer.append(",");
                     }
                 }
@@ -884,13 +868,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
     }
 
+
+
+
     private void saveSensorDataToFile(String fileName) {
-        List<LineGraphSeries<DataPoint>> seriesList = Arrays.asList(accelX, accelY, accelZ, gyroX, gyroY, gyroZ, magnetoX, magnetoY, magnetoZ, baroSeries, lightSeries, proxSeries);
-        List<String> headers = Arrays.asList("Timestamp,AccelX", "Timestamp,AccelY", "Timestamp,AccelZ", "Timestamp,GyroX", "Timestamp,GyroY", "Timestamp,GyroZ", "Timestamp,MagnetoX", "Timestamp,MagnetoY", "Timestamp,MagnetoZ", "Timestamp,Pressure", "Timestamp,Light", "Timestamp,Proximity");
-        writeDataToCsv(fileName, seriesList, headers);
+        // Replace the list of LineGraphSeries with the list of StringBuilder variables
+        List<StringBuilder> csvDataList = Arrays.asList(accelCsv, gyroCsv, magnetoCsv, baroCsv, lightCsv, proxCsv);
+
+        // Define the headers for each sensor data
+        List<String> headers = Arrays.asList("AccelTimestamp", "AccelX", "AccelY", "AccelZ", "GyroTimestamp", "GyroX", "GyroY", "GyroZ", "MagnetoTimestamp", "MagnetoX", "MagnetoY", "MagnetoZ", "BaroTimestamp", "Baro", "LightTimestamp", "Light", "ProxTimestamp", "Proximity");
+
+        // Call the new writeCsvDataToFile function
+        writeDataToCsv(fileName, csvDataList, headers);
     }
 
-    private void showSaveDialog() {
+    private void showSaveDialogSensors() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Enter a file name for the combined sensors");
 
@@ -928,8 +920,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        // set to 5 hours of data points for limit's sake
-        int maxDataPoints = 1_800_000;
+        // set to 100 for graph update to not consume too much RAM on the background
+        int maxDataPoints = 100;
         if (sensorRunning) {
             long elapsedMillis = SystemClock.elapsedRealtime() - mChronometer.getBase();
             double elapsedSeconds = elapsedMillis / 1000.0;
@@ -937,18 +929,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             switch (event.sensor.getType()) {
                 case Sensor.TYPE_ACCELEROMETER:
                         accelTimestamp = elapsedSeconds;
+                        accelCsv.append(String.format(Locale.getDefault(), "%.3f,%f,%f,%f\n", accelTimestamp, event.values[0], event.values[1], event.values[2]));
                         accelX.appendData(new DataPoint(accelTimestamp, event.values[0]), true,maxDataPoints);
                         accelY.appendData(new DataPoint(accelTimestamp, event.values[1]), true, maxDataPoints);
                         accelZ.appendData(new DataPoint(accelTimestamp, event.values[2]), true, maxDataPoints);
                     break;
                 case Sensor.TYPE_GYROSCOPE:
                         gyroTimestamp = elapsedSeconds;
+                        gyroCsv.append(String.format(Locale.getDefault(), "%.3f,%f,%f,%f\n", gyroTimestamp, event.values[0], event.values[1], event.values[2]));
                         gyroX.appendData(new DataPoint(gyroTimestamp, event.values[0]), true, maxDataPoints);
                         gyroY.appendData(new DataPoint(gyroTimestamp, event.values[1]), true, maxDataPoints);
                         gyroZ.appendData(new DataPoint(gyroTimestamp, event.values[2]), true, maxDataPoints);
                     break;
                 case Sensor.TYPE_MAGNETIC_FIELD:
                         magnetoTimestamp = elapsedSeconds;
+                        magnetoCsv.append(String.format(Locale.getDefault(), "%.3f,%f,%f,%f\n", magnetoTimestamp, event.values[0], event.values[1], event.values[2]));
                         magnetoX.appendData(new DataPoint(magnetoTimestamp, event.values[0]), true, maxDataPoints);
                         magnetoY.appendData(new DataPoint(magnetoTimestamp, event.values[1]), true, maxDataPoints);
                         magnetoZ.appendData(new DataPoint(magnetoTimestamp, event.values[2]), true, maxDataPoints);
@@ -956,6 +951,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 case Sensor.TYPE_PRESSURE:
                     if (elapsedSeconds - lastBaroTimestamp >= 1) {
                         baroTimestamp = elapsedSeconds;
+                        baroCsv.append(String.format(Locale.getDefault(), "%.3f,%f\n", baroTimestamp, event.values[0]));
                         baroSeries.appendData(new DataPoint(baroTimestamp, event.values[0]), true, maxDataPoints);
                         lastBaroTimestamp = elapsedSeconds;
                     }
@@ -963,6 +959,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 case Sensor.TYPE_LIGHT:
                     if (elapsedSeconds - lastLightTimestamp >= 1) {
                         lightTimestamp = elapsedSeconds;
+                        lightCsv.append(String.format(Locale.getDefault(), "%.3f,%f\n", lightTimestamp, event.values[0]));
                         lightSeries.appendData(new DataPoint(lightTimestamp, event.values[0]), true, maxDataPoints);
                         lastLightTimestamp = elapsedSeconds;
                     }
@@ -970,6 +967,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 case Sensor.TYPE_PROXIMITY:
                     if (elapsedSeconds - lastProxTimestamp >= 1) {
                         proxTimestamp = elapsedSeconds;
+                        proxCsv.append(String.format(Locale.getDefault(), "%.3f,%f\n", proxTimestamp, event.values[0]));
                         proxSeries.appendData(new DataPoint(proxTimestamp, event.values[0]), true, maxDataPoints);
                         lastProxTimestamp = elapsedSeconds;
                     }
