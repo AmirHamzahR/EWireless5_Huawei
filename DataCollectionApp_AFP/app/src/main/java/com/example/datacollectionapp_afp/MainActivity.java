@@ -477,18 +477,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void saveWifiCSVData(String fileName, String data) {
-            File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File file = new File(directory, fileName + ".csv");
-            try {
-                FileOutputStream fos = new FileOutputStream(file);
-                fos.write(data.getBytes());
-                fos.close();
-//                Log.d("Wifi", "Saved to " + file.getAbsolutePath());
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        if (data == null) {
+            // Show an error message to the user
+            Toast.makeText(MainActivity.this, "Data is null. Please turn on WiFi and location.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File file = new File(directory, fileName + ".csv");
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(data.getBytes());
+            fos.close();
+//        Log.d("Wifi", "Saved to " + file.getAbsolutePath());
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void showSaveDialogWifi() {
