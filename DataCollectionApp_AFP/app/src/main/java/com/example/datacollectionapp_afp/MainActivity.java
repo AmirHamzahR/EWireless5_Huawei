@@ -1,14 +1,15 @@
 package com.example.datacollectionapp_afp;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
@@ -18,7 +19,6 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.GnssStatus;
-import android.location.GpsSatellite;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -27,13 +27,16 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.text.InputType;
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -42,10 +45,11 @@ import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -83,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private WifiManager wifiManager;
     private BroadcastReceiver wifiBroadcastReceiver;
     private Timer timerWifi;
+    private String wifiCsvData;
     private long initialTimeNs;
     private long timestampNs;
     private double timestamp;
@@ -402,6 +407,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 int numAPs = results.size();
                 Log.i("WiFi Scan", " Number of APs: " + numAPs);
                 String wifiStr = "";
+
+                // Get the elapsed time from the chronometer in milliseconds
+                long elapsedMillis = SystemClock.elapsedRealtime() - mChronometer.getBase();
+
+                // Convert the elapsed time to seconds
+                double elapsedSeconds = elapsedMillis / 1000.0;
+
+                // ... (existing code)
+
+                if (wifiCounter == 1) { // Add column titles only for the first scan
+                    wifiCsvData = "Timestamp,SSID,BSSID,RSS,Frequency\n";
+                }
+
                 for (ScanResult result : results) {
                     String SSID = result.SSID, BSSID = result.BSSID;
                     int frequency = result.frequency;
@@ -409,7 +427,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     double sensorTimestamp = ((double) (timeUs)) * 1E-6;
                     int RSS = result.level;
                     wifiStr = wifiStr + "\n\t- " + SSID + ",\t" + BSSID + ",\tRSS:" + RSS + " dBm";
+                    // Updating the wifi data for CSV
+                    wifiCsvData += String.format(Locale.US, "%.5f,%s,%s,%d,%d\n", elapsedSeconds, SSID, BSSID, RSS, frequency);
                 }
+
                 String text = "\tNumber of Wifi APs: " + numAPs + wifiStr;
                 wifiTextView.setText(text);
 
@@ -446,6 +467,52 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         };
     }
+
+    private void saveWifiCSVData(String fileName, String data) {
+            File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File file = new File(directory, fileName + ".csv");
+            try {
+                FileOutputStream fos = new FileOutputStream(file);
+                fos.write(data.getBytes());
+                fos.close();
+                Log.d("Wifi", "Saved to " + file.getAbsolutePath());
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+    }
+
+    private void showSaveDialogWifi() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Enter a file name for the Wi-Fi data");
+
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        builder.setView(input);
+
+        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String fileName = input.getText().toString().trim();
+                if (!fileName.isEmpty()) {
+                    saveWifiCSVData(fileName, wifiCsvData);
+                } else {
+                    Toast.makeText(MainActivity.this, "Please enter a valid file name", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
+    }
+
+
 
     private void setLocationScanHandler(){
         // Display general GNSS data:
@@ -730,46 +797,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 locationManager.unregisterGnssStatusCallback(gnssStatusCallback);
             }
 
-            // Creating accelerator data
-            String fileName = "accel_data";
-            List<LineGraphSeries<DataPoint>> seriesList = Arrays.asList(accelX, accelY, accelZ);
-            List<String> headers = Arrays.asList("Timestamp,AccelX", "Timestamp,AccelY", "Timestamp,AccelZ");
-            writeDataToCsv(fileName, seriesList, headers);
+            // Save all the sensors in a single csv file named by the user
+            showSaveDialog();
 
-            // Creating gyroscope data
-            String gyroFileName = "gyro_data";
-            List<LineGraphSeries<DataPoint>> gyroSeriesList = Arrays.asList(gyroX, gyroY, gyroZ);
-            List<String> gyroHeaders = Arrays.asList("Timestamp,GyroX", "Timestamp,GyroY", "Timestamp,GyroZ");
-            writeDataToCsv(gyroFileName, gyroSeriesList, gyroHeaders);
 
-            // Creating magnetic field data
-            String magnetoFileName = "magneto_data";
-            List<LineGraphSeries<DataPoint>> magnetoSeriesList = Arrays.asList(magnetoX, magnetoY, magnetoZ);
-            List<String> magnetoHeaders = Arrays.asList("Timestamp,MagnetoX", "Timestamp,MagnetoY", "Timestamp,MagnetoZ");
-            writeDataToCsv(magnetoFileName, magnetoSeriesList, magnetoHeaders);
-
-            // Creating pressure data
-            String baroFileName = "baro_data";
-            List<LineGraphSeries<DataPoint>> baroSeriesList = Collections.singletonList(baroSeries);
-            List<String> baroHeaders = Collections.singletonList("Timestamp,Pressure");
-            writeDataToCsv(baroFileName, baroSeriesList, baroHeaders);
-
-            // Creating light data
-            String lightFileName = "light_data";
-            List<LineGraphSeries<DataPoint>> lightSeriesList = Collections.singletonList(lightSeries);
-            List<String> lightHeaders = Collections.singletonList("Timestamp,Light");
-            writeDataToCsv(lightFileName, lightSeriesList, lightHeaders);
-
-            // Creating proximity data
-            String proxFileName = "prox_data";
-            List<LineGraphSeries<DataPoint>> proxSeriesList = Collections.singletonList(proxSeries);
-            List<String> proxHeaders = Collections.singletonList("Timestamp,Proximity");
-            writeDataToCsv(proxFileName, proxSeriesList, proxHeaders);
+            // Saving the wifi data in a single csv file named by the user
+            showSaveDialogWifi();
         }
         sensorRunning = false;
     }
 
-    // Saving data to be stored in local
     private void writeDataToCsv(String fileName, List<LineGraphSeries<DataPoint>> seriesList, List<String> headers) {
         if (seriesList.size() != headers.size()) {
             Toast.makeText(this, "Error: Series and headers lists must have the same size", Toast.LENGTH_SHORT).show();
@@ -777,8 +814,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }
 
         try {
-            File file = new File(getExternalFilesDir(null), fileName + ".csv");
+            File downloadsDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+            File file = new File(downloadsDirectory, fileName + ".csv");
             FileWriter writer = new FileWriter(file);
+
 
             // Write header line
             for (int i = 0; i < headers.size(); i++) {
@@ -786,34 +825,54 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 writer.append(header);
                 if (i < headers.size() - 1) {
                     writer.append(",");
-                } else {
-                    writer.append("\n");
                 }
+            }
+            writer.append("\n");
+
+            // Find the maximum number of rows
+            int maxRows = 0;
+            for (LineGraphSeries<DataPoint> series : seriesList) {
+                double minX = series.getLowestValueX(); // Get the minimum x-axis value
+                double maxX = series.getHighestValueX(); // Get the maximum x-axis value
+                Iterator<DataPoint> dataPoints = series.getValues(minX, maxX);
+                int rowCount = 0;
+                while (dataPoints.hasNext()) {
+                    dataPoints.next();
+                    rowCount++;
+                }
+                maxRows = Math.max(maxRows, rowCount);
             }
 
             // Loop through the series list and write data points
-            for (int i = 0; i < seriesList.size(); i++) {
-                LineGraphSeries<DataPoint> series = seriesList.get(i);
+            for (int row = 0; row < maxRows; row++) {
+                for (int i = 0; i < seriesList.size(); i++) {
+                    LineGraphSeries<DataPoint> series = seriesList.get(i);
 
-                double minX = series.getLowestValueX(); // Get the minimum x-axis value
-                double maxX = series.getHighestValueX(); // Get the maximum x-axis value
+                    double minX = series.getLowestValueX(); // Get the minimum x-axis value
+                    double maxX = series.getHighestValueX(); // Get the maximum x-axis value
+                    Iterator<DataPoint> dataPoints = series.getValues(minX, maxX);
 
-                // Get the data points as an array
-                Iterator<DataPoint> dataPoints = series.getValues(minX, maxX);
+                    // Move iterator to the current row
+                    int currentRow = 0;
+                    DataPoint dataPoint = null;
+                    while (dataPoints.hasNext() && currentRow <= row) {
+                        dataPoint = dataPoints.next();
+                        currentRow++;
+                    }
 
-                // Write the data points to the file
-                while (dataPoints.hasNext()) {
-                    DataPoint dataPoint = dataPoints.next();
-                    writer.append(String.format(Locale.getDefault(), "%.3f,%f", dataPoint.getX(), dataPoint.getY()));
-                    if (dataPoints.hasNext()) {
-                        writer.append("\n");
+                    // Write data point if available
+                    if (currentRow == row + 1) {
+                        writer.append(String.format(Locale.getDefault(), "%.3f,%f", dataPoint.getX(), dataPoint.getY()));
+                    } else {
+                        writer.append(",");
+                    }
+
+                    // Add a comma separator if not the last column
+                    if (i < seriesList.size() - 1) {
+                        writer.append(",");
                     }
                 }
-
-                // Write an empty line to separate data from different sensors
-                if (i < seriesList.size() - 1) {
-                    writer.append("\n");
-                }
+                writer.append("\n");
             }
 
             writer.flush();
@@ -824,6 +883,42 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             Toast.makeText(this, "Error saving data to file", Toast.LENGTH_SHORT).show();
         }
     }
+
+    private void saveSensorDataToFile(String fileName) {
+        List<LineGraphSeries<DataPoint>> seriesList = Arrays.asList(accelX, accelY, accelZ, gyroX, gyroY, gyroZ, magnetoX, magnetoY, magnetoZ, baroSeries, lightSeries, proxSeries);
+        List<String> headers = Arrays.asList("Timestamp,AccelX", "Timestamp,AccelY", "Timestamp,AccelZ", "Timestamp,GyroX", "Timestamp,GyroY", "Timestamp,GyroZ", "Timestamp,MagnetoX", "Timestamp,MagnetoY", "Timestamp,MagnetoZ", "Timestamp,Pressure", "Timestamp,Light", "Timestamp,Proximity");
+        writeDataToCsv(fileName, seriesList, headers);
+    }
+
+    private void showSaveDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Enter a file name for the combined sensors");
+
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        builder.setView(input);
+
+        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String fileName = input.getText().toString().trim();
+                if (!fileName.isEmpty()) {
+                    saveSensorDataToFile(fileName);
+                } else {
+                    Toast.makeText(MainActivity.this, "Please enter a valid file name", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
+    }
+
 
 
     // Implementing the methods for sensor accuracy, resume, pause
