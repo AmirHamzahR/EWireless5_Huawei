@@ -483,7 +483,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             return;
         }
 
-        File directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+        File directory = getExternalFilesDir(null);
         File file = new File(directory, fileName + ".csv");
         try {
             FileOutputStream fos = new FileOutputStream(file);
@@ -823,8 +823,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     private void writeDataToCsv(String fileName, List<StringBuilder> csvDataList, List<String> headers) {
         try {
-            File downloadsDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
-            File file = new File(downloadsDirectory, fileName + ".csv");
+            File directory = getExternalFilesDir(null);
+            File file = new File(directory, fileName + ".csv");
             FileWriter writer = new FileWriter(file);
 
             // Write header line
