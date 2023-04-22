@@ -1,5 +1,7 @@
 package com.example.datacollectionapp_afp;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVPrinter;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,6 +33,8 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.text.InputType;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -42,12 +46,18 @@ import android.widget.Toast;
 import com.jjoe64.graphview.GraphView;
 import com.jjoe64.graphview.series.DataPoint;
 import com.jjoe64.graphview.series.LineGraphSeries;
+import com.opencsv.CSVWriter;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -55,6 +65,8 @@ import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity implements SensorEventListener {
     // Static string to transfer the intent on another class
@@ -74,6 +86,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     // add location
     private LocationManager locationManager;
+    private StringBuilder locationDataSB = new StringBuilder();
+    // Declare a boolean variable outside the onLocationChanged method
+    private boolean firstLocationUpdate = true;
     private GnssStatus.Callback gnssStatusCallback;
     private TextView gnssStatusView, gnssInfoView;
     private String gnssFeaturesText;
@@ -195,31 +210,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     new String[]{android.Manifest.permission.BODY_SENSORS}, Sensor.TYPE_GYROSCOPE);
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_REQUEST_CODE);
-        }
-
         gnssStatusCallback = new GnssStatusCallback();
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             // Request the required permission
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION_PERMISSION);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, REQUEST_LOCATION_PERMISSION);
         } else {
             // Permission is already granted, register the GnssStatusCallback
             locationManager.registerGnssStatusCallback(gnssStatusCallback, null);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0.0f, locationListener);
         }
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        // Ask permission for Wifi
-        // Ask permission for Location
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == PERMISSION_REQUEST_CODE && grantResults.length > 0 && grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-            // Permission denied, show an explanation to the user or disable the related functionality
-        }
-
         if (requestCode == REQUEST_LOCATION_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 // Permission is granted, register the GnssStatusCallback
@@ -227,6 +235,33 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     locationManager.registerGnssStatusCallback(gnssStatusCallback, null);
                 } catch (SecurityException e) {
                     e.printStackTrace();
+                }
+
+                // Register the LocationListener with default minTime and minDistance values
+                if (locationManager != null) {
+                    try {
+                        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                        }
+                    } catch (SecurityException e) {
+                        e.printStackTrace();
+                    }
+
+                    try {
+                        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+                        }
+                    } catch (SecurityException e) {
+                        e.printStackTrace();
+                    }
+
+                    try {
+                        if (locationManager.isProviderEnabled(LocationManager.PASSIVE_PROVIDER)) {
+                            locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 0, 0, locationListener);
+                        }
+                    } catch (SecurityException e) {
+                        e.printStackTrace();
+                    }
                 }
             } else {
                 // Permission is denied, show an appropriate message or handle the case accordingly
@@ -422,12 +457,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 // Convert the elapsed time to seconds
                 double elapsedSeconds = elapsedMillis / 1000.0;
 
-                // ... (existing code)
-
-                if (wifiCounter == 1) { // Add column titles only for the first scan
-                    wifiCsvData = "Timestamp,SSID,BSSID,RSS,Frequency\n";
-                }
-
                 for (ScanResult result : results) {
                     String SSID = result.SSID, BSSID = result.BSSID;
                     int frequency = result.frequency;
@@ -476,58 +505,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         };
     }
 
-    private void saveWifiCSVData(String fileName, String data) {
-        if (data == null) {
-            // Show an error message to the user
-            Toast.makeText(MainActivity.this, "Data is null. Please turn on WiFi and location.", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        File directory = getExternalFilesDir(null);
-        File file = new File(directory, fileName + ".csv");
-        try {
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.write(data.getBytes());
-            fos.close();
-//        Log.d("Wifi", "Saved to " + file.getAbsolutePath());
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void showSaveDialogWifi() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Enter a file name for the Wi-Fi data");
-
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
-        builder.setView(input);
-
-        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String fileName = input.getText().toString().trim();
-                if (!fileName.isEmpty()) {
-                    saveWifiCSVData(fileName, wifiCsvData);
-                } else {
-                    Toast.makeText(MainActivity.this, "Please enter a valid file name", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
-        });
-
-        builder.show();
-    }
-
-
-
     private void setLocationScanHandler(){
         // Display general GNSS data:
         if (locationManager != null) {
@@ -567,34 +544,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private LocationListener locationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
-//            Log.i("LocationChanged", "Gps data");
             double latitude = location.getLatitude(), longitude = location.getLongitude(), altitude = location.getAltitude();
             float bearing = location.getBearing(), accuracy = location.getAccuracy(), speed = location.getSpeed();
-            double sensorTimestamp = location.getTime() / 1000.0;
             String provider = location.getProvider();
-            counter_Gnss++;
 
-            long timestamp_ns_raw = System.nanoTime();
-            timestamp_ns = timestamp_ns_raw >= initial_time_ns_raw ? timestamp_ns_raw - initial_time_ns_raw : (timestamp_ns_raw - initial_time_ns_raw) + Long.MAX_VALUE;
-            timestamp = timestamp_ns * 1E-9;
+            // Calculate the elapsed time in seconds
+            long elapsedMillis = SystemClock.elapsedRealtime() - mChronometer.getBase();
+            double elapsedSeconds = elapsedMillis / 1000.0;
 
-            if (timestamp - timestamp_Gnss_last > 0)
-                freq_medida_Gnss = (float) (0.9 * freq_medida_Gnss + 0.1 / (timestamp - timestamp_Gnss_last));
-            timestamp_Gnss_last = timestamp;
+            StringBuilder cadena_display = new StringBuilder(String.format(Locale.US, "\tLatitude: \t%10.6f \tdegrees\n\tLongitude: \t%10.6f \tdegrees\n", latitude, longitude));
+            cadena_display.append(location.hasAltitude() ? String.format(Locale.US, "\tAltitude: \t%6.1f \t m\n", altitude) : "\tAltitude: \t\t? \tm\n");
+            cadena_display.append(location.hasAccuracy() ? String.format(Locale.US, "\tAccuracy: \t%8.3f \tm\n", accuracy) : "\tAccuracy: \t\t? \tm\n");
+            cadena_display.append(location.hasBearing() ? String.format(Locale.US, "\tBearing: \t\t%8.3f \tdegrees\n", bearing) : "\tBearing: \t\t? \tdegrees\n");
+            cadena_display.append(location.hasSpeed() ? String.format(Locale.US, "\tSpeed: \t%8.3f \tm\n", speed) : "\tSpeed: \t\t? \tm\n");
+            cadena_display.append(String.format(Locale.US, "\tTime: \t%8.3f \ts\n", elapsedSeconds));
+            cadena_display.append(String.format(Locale.US, "\t(Provider: \t%s\n", provider.toUpperCase()));
 
-            if (timestamp - timestamp_Gnss_last_update > deltaT_update) {
-                StringBuilder cadena_display = new StringBuilder(String.format(Locale.US, "\tLatitude: \t%10.6f \tdegrees\n\tLongitude: \t%10.6f \tdegrees\n", latitude, longitude));
-                cadena_display.append(location.hasAltitude() ? String.format(Locale.US, "\tAltitude: \t%6.1f \t m\n", altitude) : "\tAltitude: \t\t? \tm\n");
-                cadena_display.append(location.hasAccuracy() ? String.format(Locale.US, "\tAccuracy: \t%8.3f \tm\n", accuracy) : "\tAccuracy: \t\t? \tm\n");
-                cadena_display.append(location.hasBearing() ? String.format(Locale.US, "\tBearing: \t\t%8.3f \tdegrees\n", bearing) : "\tBearing: \t\t? \tdegrees\n");
-                cadena_display.append(location.hasSpeed() ? String.format(Locale.US, "\tSpeed: \t%8.3f \tm\n", speed) : "\tSpeed: \t\t? \tm\n");
-                cadena_display.append(String.format(Locale.US, "\tTime: \t%8.3f \ts\n", sensorTimestamp));
-                cadena_display.append(String.format(Locale.US, "\t(Provider: \t%s;  Freq: %5.0f Hz)\n", provider.toUpperCase(), freq_medida_Gnss));
+            // Append the location data values as CSV
+            locationDataSB.append(String.format(Locale.US, "%.6f,%.6f,%.1f,%.3f,%.3f,%.3f,%.3f,%s\n",
+                    elapsedSeconds, latitude, longitude, altitude, accuracy, bearing, speed, provider.toUpperCase()));
 
-                TextView obj_txtView = findViewById(R.id.locationChangedData); // rename to locationChangedData
-                obj_txtView.setText(cadena_display.toString());
-                timestamp_Gnss_last_update = timestamp;
-            }
+            // Display the location data on the screen
+            TextView obj_txtView = findViewById(R.id.locationChangedData); // rename to locationChangedData
+            obj_txtView.setText(cadena_display.toString());
         }
 
         @Override
@@ -728,18 +700,20 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         // askPermission
         askPermission();
 
-        // Register the GnssStatusCallback
-        try {
-            locationManager.registerGnssStatusCallback(gnssStatusCallback, null);
-        } catch (SecurityException e) {
-            e.printStackTrace();
-        }
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            // Register the GnssStatusCallback
+            try {
+                locationManager.registerGnssStatusCallback(gnssStatusCallback, null);
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
 
-        // Register the LocationListener with default minTime and minDistance values
-        try {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0.0f, locationListener);
-        } catch (SecurityException e) {
-            e.printStackTrace();
+            // Register the LocationListener with default minTime and minDistance values
+            try {
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0.0f, locationListener);
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
         }
 
         mChronometer.setBase(SystemClock.elapsedRealtime()); // reset to 0
@@ -798,99 +772,19 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             // Unregister the sensor listener
             unregisteringListeners();
 
-            // Unregister the WiFi broadcast receiver
-            unregisterReceiver(wifiBroadcastReceiver);
-
             // Stop the WiFi scanning timer
             timerWifi.cancel();
             timerWifi.purge();
 
-            // Remove location updates
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                locationManager.removeUpdates(locationListener);
-                locationManager.unregisterGnssStatusCallback(gnssStatusCallback);
-            }
-
             // Save all the sensors in a single csv file named by the user
-            showSaveDialogSensors();
-
-
-            // Saving the wifi data in a single csv file named by the user
-            showSaveDialogWifi();
+            showSaveDialogAllData();
         }
         sensorRunning = false;
     }
 
-    private void writeDataToCsv(String fileName, List<StringBuilder> csvDataList, List<String> headers) {
-        try {
-            File directory = getExternalFilesDir(null);
-            File file = new File(directory, fileName + ".csv");
-            FileWriter writer = new FileWriter(file);
-
-            // Write header line
-            for (int i = 0; i < headers.size(); i++) {
-                String header = headers.get(i);
-                writer.append(header);
-                if (i < headers.size() - 1) {
-                    writer.append(",");
-                }
-            }
-            writer.append("\n");
-
-            // Find the maximum number of rows
-            int maxRows = 0;
-            for (StringBuilder csvData : csvDataList) {
-                String[] lines = csvData.toString().split("\n");
-                maxRows = Math.max(maxRows, lines.length);
-            }
-
-            // Loop through the csvDataList and write data points
-            for (int row = 0; row < maxRows; row++) {
-                for (int i = 0; i < csvDataList.size(); i++) {
-                    StringBuilder csvData = csvDataList.get(i);
-                    String[] lines = csvData.toString().split("\n");
-
-                    // Write data point if available
-                    if (row < lines.length) {
-                        writer.append(lines[row]);
-                    } else {
-                        writer.append(",");
-                    }
-
-                    // Add a comma separator if not the last column
-                    if (i < csvDataList.size() - 1) {
-                        writer.append(",");
-                    }
-                }
-                writer.append("\n");
-            }
-
-            writer.flush();
-            writer.close();
-            Toast.makeText(this, "Data saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Error saving data to file", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-
-
-
-    private void saveSensorDataToFile(String fileName) {
-        // Replace the list of LineGraphSeries with the list of StringBuilder variables
-        List<StringBuilder> csvDataList = Arrays.asList(accelCsv, gyroCsv, magnetoCsv, baroCsv, lightCsv, proxCsv);
-
-        // Define the headers for each sensor data
-        List<String> headers = Arrays.asList("AccelTimestamp", "AccelX", "AccelY", "AccelZ", "GyroTimestamp", "GyroX", "GyroY", "GyroZ", "MagnetoTimestamp", "MagnetoX", "MagnetoY", "MagnetoZ", "BaroTimestamp", "Baro", "LightTimestamp", "Light", "ProxTimestamp", "Proximity");
-
-        // Call the new writeCsvDataToFile function
-        writeDataToCsv(fileName, csvDataList, headers);
-    }
-
-    private void showSaveDialogSensors() {
+    private void showSaveDialogAllData() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Enter a file name for the combined sensors");
+        builder.setTitle("Enter a file name for all data");
 
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_TEXT);
@@ -901,12 +795,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             public void onClick(DialogInterface dialog, int which) {
                 String fileName = input.getText().toString().trim();
                 if (!fileName.isEmpty()) {
-                    saveSensorDataToFile(fileName);
+                    saveAllDataToFile(fileName);
                 } else {
                     Toast.makeText(MainActivity.this, "Please enter a valid file name", Toast.LENGTH_SHORT).show();
                 }
             }
         });
+
         builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
@@ -916,6 +811,101 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         builder.show();
     }
+
+    private void saveAllDataToFile(String fileName) {
+        List<List<String>> allData = new ArrayList<>();
+        List<String> headers = new ArrayList<>();
+        List<String> combinedData = new ArrayList<>();
+        List<Integer> headerCounts = new ArrayList<>();
+        int maxLines = 0;
+
+        // Helper function to split lines and add data
+        BiConsumer<StringBuilder, List<String>> splitAndAddData = (sb, targetList) -> {
+            if (sb != null && sb.length() > 0) {
+                targetList.addAll(Arrays.asList(sb.toString().split("\n")));
+            }
+        };
+
+        // Process each sensor data type and store it in a list
+        List<String> accelLines = new ArrayList<>();
+        List<String> baroLines = new ArrayList<>();
+        List<String> lightLines = new ArrayList<>();
+        List<String> proxLines = new ArrayList<>();
+        List<String> gyroLines = new ArrayList<>();
+        List<String> magnetoLines = new ArrayList<>();
+        List<String> wifiLines = new ArrayList<>();
+        List<String> locationLines = new ArrayList<>();
+
+        splitAndAddData.accept(accelCsv, accelLines);
+        splitAndAddData.accept(baroCsv, baroLines);
+        splitAndAddData.accept(lightCsv, lightLines);
+        splitAndAddData.accept(proxCsv, proxLines);
+        splitAndAddData.accept(gyroCsv, gyroLines);
+        splitAndAddData.accept(magnetoCsv, magnetoLines);
+        splitAndAddData.accept(new StringBuilder(wifiCsvData), wifiLines);
+        splitAndAddData.accept(locationDataSB, locationLines);
+
+        allData.addAll(Arrays.asList(accelLines, baroLines, lightLines, proxLines, gyroLines, magnetoLines, wifiLines, locationLines));
+        headers.addAll(Arrays.asList("AccelTimestamp", "AccelX", "AccelY", "AccelZ", "BaroTimestamp", "Baro", "LightTimestamp", "Light", "ProxTimestamp", "Proximity", "GyroTimestamp", "GyroX", "GyroY", "GyroZ", "MagnetoTimestamp", "MagnetoX", "MagnetoY", "MagnetoZ", "WiFiTimestamp", "SSID", "BSSID", "RSS", "frequency", "LocationTimestamp", "Latitude", "Longitude", "Altitude", "Accuracy", "Bearing", "Speed", "Provider"));
+        headerCounts.addAll(Arrays.asList(4, 2, 2, 2, 4, 4, 5, 10));
+
+        // Calculate the maximum number of lines from all sensor data lists
+        maxLines = allData.stream().mapToInt(List::size).max().orElse(0);
+
+        // Combine sensor data and skip empty columns where needed
+        for (int i = 0; i < maxLines; i++) {
+            StringBuilder line = new StringBuilder();
+            int currentHeaderIndex = 0;
+            for (int dataIndex = 0; dataIndex < allData.size(); dataIndex++) {
+                List<String> lines = allData.get(dataIndex);
+                int skipColumns = 0;
+                if (i < lines.size()) {
+                    String[] values = lines.get(i).split(",");
+                    for (int j = 0; j < values.length; j++) {
+                        line.append(values[j]);
+                        line.append(",");
+                        currentHeaderIndex++;
+                    }
+                } else {
+                    int columnCount = headerCounts.get(dataIndex);
+                    skipColumns = columnCount;
+                    currentHeaderIndex += columnCount;
+                }
+                // Append commas to skip empty columns
+                for (int j = 0; j < skipColumns; j++) {
+                    line.append(",");
+                }
+            }
+            combinedData.add(line.toString());
+        }
+
+        // Write combined data to CSV file
+        writeDataToCsv(fileName, combinedData, headers);
+    }
+
+
+        private void writeDataToCsv(String fileName, List<String> allData, List<String> headers) {
+        File directory = getExternalFilesDir(null);
+        File file = new File(directory, fileName + ".csv");
+
+        // Use try-with-resources to ensure the writer is closed automatically
+        try (BufferedWriter writer = Files.newBufferedWriter(Paths.get(file.getAbsolutePath()));
+             CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(headers.toArray(new String[0])))) {
+
+            // Write data lines
+            for (String line : allData) {
+                String[] values = line.split(",");
+                csvPrinter.printRecord((Object[]) values);
+            }
+
+            csvPrinter.flush();
+            Toast.makeText(this, "Data saved to " + file.getAbsolutePath(), Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error saving data to file", Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
 
 
@@ -987,22 +977,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onResume();
         if(sensorRunning) {
             registeringListeners();
+
+            // Register the GnssStatusCallback
+            try {
+                locationManager.registerGnssStatusCallback(gnssStatusCallback, null);
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+
         }
-        // registering the wifi
-        //............. Register WiFi .................
-        if (wifiManager!=null)
-        {
-            registerReceiver(wifiBroadcastReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)  );
-        }
+
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        unregisteringListeners();
-        if (wifiManager!=null)
-        {
-            unregisterReceiver(wifiBroadcastReceiver);
+        if(sensorRunning) {
+            unregisteringListeners();
         }
     }
 
@@ -1023,6 +1014,38 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         {
             registerReceiver(wifiBroadcastReceiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)  );
         }
+        // Register the GnssStatusCallback
+        try {
+            locationManager.registerGnssStatusCallback(gnssStatusCallback, null);
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        }
+        // Register the LocationListener with default minTime and minDistance values
+        if (locationManager != null) {
+            try {
+                if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                }
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, locationListener);
+                }
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                if (locationManager.isProviderEnabled(LocationManager.PASSIVE_PROVIDER)) {
+                    locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 0, 0, locationListener);
+                }
+            } catch (SecurityException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private void unregisteringListeners(){
@@ -1032,5 +1055,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sm.unregisterListener(this,baroSensor);
         sm.unregisterListener(this,lightSensor);
         sm.unregisterListener(this,proxSensor);
+
+        if (wifiManager != null) {
+            unregisterReceiver(wifiBroadcastReceiver);
+        }
+        // Remove location updates
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            locationManager.removeUpdates(locationListener);
+            locationManager.unregisterGnssStatusCallback(gnssStatusCallback);
+        }
     }
 }
