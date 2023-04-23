@@ -24,9 +24,14 @@ import java.util.Locale;
 public class SensorManagerHelper implements SensorEventListener{
     private SensorManager sensorManager;
     private Context context;
+
     protected LineGraphSeries<DataPoint> accelX, accelY, accelZ;
+    protected LineGraphSeries<DataPoint> accelXUncalibrated, accelYUncalibrated, accelZUncalibrated;
     protected LineGraphSeries<DataPoint> gyroX, gyroY, gyroZ;
+    protected LineGraphSeries<DataPoint> gyroXUncalibrated, gyroYUncalibrated, gyroZUncalibrated;
     protected LineGraphSeries<DataPoint> magnetoX, magnetoY, magnetoZ;
+    protected LineGraphSeries<DataPoint> magnetoXUncalibrated, magnetoYUncalibrated, magnetoZUncalibrated;
+
     protected LineGraphSeries<DataPoint> baroSeries, lightSeries, proxSeries;
     protected boolean sensorRunning = false;
     protected double accelTimestamp= 0.0;
@@ -38,6 +43,9 @@ public class SensorManagerHelper implements SensorEventListener{
     protected double lastBaroTimestamp = 0;
     protected double lastLightTimestamp = 0;
     protected double lastProxTimestamp = 0;
+    protected double accelTimestampUncalibrated = 0;
+    protected double gyroTimestampUncalibrated = 0;
+    protected double magnetoTimestampUncalibrated = 0;
     private Activity activity;
     private GnssStatus.Callback gnssStatusCallback;
     private LocationManager locationManager;
@@ -48,8 +56,9 @@ public class SensorManagerHelper implements SensorEventListener{
     protected StringBuilder baroCsv = new StringBuilder();
     protected StringBuilder lightCsv = new StringBuilder();
     protected StringBuilder proxCsv = new StringBuilder();
-
-
+    protected StringBuilder accelUncalibratedCsv = new StringBuilder();
+    protected StringBuilder gyroUncalibratedCsv = new StringBuilder();
+    protected StringBuilder magnetoUncalibratedCsv = new StringBuilder();
 
     public SensorManagerHelper(Context context, Activity activity, GnssStatus.Callback gnssStatusCallback, LocationListener locationListener) {
         sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
@@ -67,10 +76,16 @@ public class SensorManagerHelper implements SensorEventListener{
         Sensor baroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
         Sensor lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         Sensor proxSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+        Sensor accelUncalibratedSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER_UNCALIBRATED);
+        Sensor gyroUncalibratedSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED);
+        Sensor magnetoUncalibratedSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED);
 
         sensorManager.registerListener((SensorEventListener) this, accelSensor, 10000);
         sensorManager.registerListener((SensorEventListener) this, gyroSensor, 10000);
         sensorManager.registerListener((SensorEventListener) this, magnetoSensor, 10000);
+        sensorManager.registerListener(this, accelUncalibratedSensor, 10000);
+        sensorManager.registerListener(this, gyroUncalibratedSensor, 10000);
+        sensorManager.registerListener(this, magnetoUncalibratedSensor, 10000);
         sensorManager.registerListener((SensorEventListener) this, baroSensor, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener((SensorEventListener) this, lightSensor, SensorManager.SENSOR_DELAY_FASTEST);
         sensorManager.registerListener((SensorEventListener) this, proxSensor, SensorManager.SENSOR_DELAY_FASTEST);
@@ -111,8 +126,11 @@ public class SensorManagerHelper implements SensorEventListener{
 
     public void unregisterListeners() {
         sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER));
+        sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER_UNCALIBRATED));
         sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE));
+        sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED));
         sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD));
+        sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED));
         sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE));
         sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT));
         sensorManager.unregisterListener((SensorEventListener) this, sensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY));
@@ -180,6 +198,45 @@ public class SensorManagerHelper implements SensorEventListener{
                         proxCsv.append(String.format(Locale.getDefault(), "%.3f,%f\n", proxTimestamp, event.values[0]));
                         proxSeries.appendData(new DataPoint(proxTimestamp, event.values[0]), true, maxDataPoints);
                         lastProxTimestamp = elapsedSeconds;
+                    }
+                    break;
+                case Sensor.TYPE_ACCELEROMETER_UNCALIBRATED:
+                    accelTimestampUncalibrated = elapsedSeconds;
+                    accelUncalibratedCsv.append(String.format(Locale.getDefault(), "%.3f,%f,%f,%f\n", accelTimestampUncalibrated, event.values[0], event.values[1], event.values[2]));
+                    if(accelXUncalibrated != null){
+                        accelXUncalibrated.appendData(new DataPoint(accelTimestampUncalibrated, event.values[0]), true, maxDataPoints);
+                    }
+                    if(accelYUncalibrated != null){
+                        accelYUncalibrated.appendData(new DataPoint(accelTimestampUncalibrated, event.values[1]), true, maxDataPoints);
+                    }
+                    if(accelZUncalibrated != null){
+                        accelZUncalibrated.appendData(new DataPoint(accelTimestampUncalibrated, event.values[2]), true, maxDataPoints);
+                    }
+                    break;
+                case Sensor.TYPE_GYROSCOPE_UNCALIBRATED:
+                    gyroTimestampUncalibrated = elapsedSeconds;
+                    gyroUncalibratedCsv.append(String.format(Locale.getDefault(), "%.3f,%f,%f,%f\n", gyroTimestampUncalibrated, event.values[0], event.values[1], event.values[2]));
+                    if(gyroXUncalibrated != null) {
+                        gyroXUncalibrated.appendData(new DataPoint(gyroTimestampUncalibrated, event.values[0]), true, maxDataPoints);
+                    }
+                    if(gyroYUncalibrated != null) {
+                        gyroYUncalibrated.appendData(new DataPoint(gyroTimestampUncalibrated, event.values[1]), true, maxDataPoints);
+                    }
+                    if(gyroZUncalibrated != null) {
+                        gyroZUncalibrated.appendData(new DataPoint(gyroTimestampUncalibrated, event.values[2]), true, maxDataPoints);
+                    }
+                    break;
+                case Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED:
+                    magnetoTimestampUncalibrated = elapsedSeconds;
+                    magnetoUncalibratedCsv.append(String.format(Locale.getDefault(), "%.3f,%f,%f,%f\n", magnetoTimestampUncalibrated, event.values[0], event.values[1], event.values[2]));
+                    if(magnetoXUncalibrated != null) {
+                        magnetoXUncalibrated.appendData(new DataPoint(magnetoTimestampUncalibrated, event.values[0]), true, maxDataPoints);
+                    }
+                    if(magnetoYUncalibrated != null) {
+                        magnetoYUncalibrated.appendData(new DataPoint(magnetoTimestampUncalibrated, event.values[1]), true, maxDataPoints);
+                    }
+                    if(magnetoZUncalibrated != null) {
+                        magnetoZUncalibrated.appendData(new DataPoint(magnetoTimestampUncalibrated, event.values[2]), true, maxDataPoints);
                     }
                     break;
             }

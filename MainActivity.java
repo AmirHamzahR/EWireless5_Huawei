@@ -238,7 +238,7 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
             int RSS = result.level;
             wifiStr +=  "\n\t- " + SSID + ",\t" + BSSID + ",\tRSS:" + RSS + " dBm";
             // Updating the wifi data for CSV
-            wifiManagerHelper.wifiCsvData += String.format(Locale.US, "%.5f,%s,%s,%d,%d\n", elapsedSeconds, SSID, BSSID, RSS, frequency);
+            wifiManagerHelper.wifiCsvData.append(String.format(Locale.US, "%.5f,%s,%s,%d,%d\n", elapsedSeconds, SSID, BSSID, RSS, frequency));
         }
 
         String text = "\n" + " Number of Wifi APs: " + numAPs + wifiStr;
@@ -409,8 +409,11 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
 
         // resetting the timestamps
         sensorManagerHelper.accelTimestamp = 0.0;
+        sensorManagerHelper.accelTimestampUncalibrated = 0.0;
         sensorManagerHelper.gyroTimestamp = 0.0;
+        sensorManagerHelper.gyroTimestampUncalibrated = 0.0;
         sensorManagerHelper.magnetoTimestamp = 0.0;
+        sensorManagerHelper.magnetoTimestampUncalibrated = 0.0;
         sensorManagerHelper.baroTimestamp = 0.0;
         sensorManagerHelper.lightTimestamp = 0.0;
         sensorManagerHelper.proxTimestamp = 0.0;
@@ -420,15 +423,48 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
         sensorManagerHelper.accelY.resetData(new DataPoint[]{});
         sensorManagerHelper.accelZ.resetData(new DataPoint[]{});
 
+        // Clear the Uncalibrated acceleration graph data
+        if(sensorManagerHelper.accelXUncalibrated != null){
+            sensorManagerHelper.accelXUncalibrated.resetData(new DataPoint[]{});
+        }
+        if(sensorManagerHelper.accelYUncalibrated != null){
+            sensorManagerHelper.accelYUncalibrated.resetData(new DataPoint[]{});
+        }
+        if(sensorManagerHelper.accelZUncalibrated != null){
+            sensorManagerHelper.accelZUncalibrated.resetData(new DataPoint[]{});
+        }
+
         // Clear the gyroscope graph data
         sensorManagerHelper.gyroX.resetData(new DataPoint[]{});
         sensorManagerHelper.gyroY.resetData(new DataPoint[]{});
         sensorManagerHelper.gyroZ.resetData(new DataPoint[]{});
 
+        // Clear the Uncalibrated gyroscope graph data
+        if(sensorManagerHelper.gyroXUncalibrated != null) {
+            sensorManagerHelper.gyroXUncalibrated.resetData(new DataPoint[]{});
+        }
+        if(sensorManagerHelper.gyroYUncalibrated != null) {
+            sensorManagerHelper.gyroYUncalibrated.resetData(new DataPoint[]{});
+        }
+        if(sensorManagerHelper.gyroZUncalibrated != null) {
+            sensorManagerHelper.gyroZUncalibrated.resetData(new DataPoint[]{});
+        }
+
         // Clear the magnetometer graph data
         sensorManagerHelper.magnetoX.resetData(new DataPoint[]{});
         sensorManagerHelper.magnetoY.resetData(new DataPoint[]{});
         sensorManagerHelper.magnetoZ.resetData(new DataPoint[]{});
+
+        // Clear the Uncalibrated magnetometer graph data
+        if(sensorManagerHelper.magnetoXUncalibrated != null) {
+            sensorManagerHelper.magnetoXUncalibrated.resetData(new DataPoint[]{});
+        }
+        if(sensorManagerHelper.magnetoYUncalibrated != null) {
+            sensorManagerHelper.magnetoYUncalibrated.resetData(new DataPoint[]{});
+        }
+        if(sensorManagerHelper.magnetoZUncalibrated != null) {
+            sensorManagerHelper.magnetoZUncalibrated.resetData(new DataPoint[]{});
+        }
 
         // Clear the barometer graph data
         sensorManagerHelper.baroSeries.resetData(new DataPoint[]{});
@@ -513,7 +549,19 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
         List<String> magnetoLines = new ArrayList<>();
         List<String> wifiLines = new ArrayList<>();
         List<String> locationLines = new ArrayList<>();
+        List<String> accelUncalibratedLines = new ArrayList<>();
+        List<String> gyroUncalibratedLines = new ArrayList<>();
+        List<String> magnetoUncalibratedLines = new ArrayList<>();
 
+        if(sensorManagerHelper.accelUncalibratedCsv != null) {
+            splitAndAddData.accept(sensorManagerHelper.accelUncalibratedCsv, accelUncalibratedLines);
+        }
+        if(sensorManagerHelper.gyroUncalibratedCsv != null) {
+            splitAndAddData.accept(sensorManagerHelper.gyroUncalibratedCsv, gyroUncalibratedLines);
+        }
+        if(sensorManagerHelper.magnetoUncalibratedCsv != null) {
+            splitAndAddData.accept(sensorManagerHelper.magnetoUncalibratedCsv, magnetoUncalibratedLines);
+        }
         if (sensorManagerHelper.accelCsv != null) {
             splitAndAddData.accept(sensorManagerHelper.accelCsv, accelLines);
         }
@@ -533,15 +581,15 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
             splitAndAddData.accept(sensorManagerHelper.magnetoCsv, magnetoLines);
         }
         if (wifiManagerHelper.wifiCsvData != null) {
-            splitAndAddData.accept(new StringBuilder(wifiManagerHelper.wifiCsvData), wifiLines);
+            splitAndAddData.accept(wifiManagerHelper.wifiCsvData, wifiLines);
         }
         if (locationDataSB != null) {
             splitAndAddData.accept(locationDataSB, locationLines);
         }
 
-        allData.addAll(Arrays.asList(accelLines, baroLines, lightLines, proxLines, gyroLines, magnetoLines, wifiLines, locationLines));
-        headers.addAll(Arrays.asList("AccelTimestamp", "AccelX", "AccelY", "AccelZ", "BaroTimestamp", "Baro", "LightTimestamp", "Light", "ProxTimestamp", "Proximity", "GyroTimestamp", "GyroX", "GyroY", "GyroZ", "MagnetoTimestamp", "MagnetoX", "MagnetoY", "MagnetoZ", "WiFiTimestamp", "SSID", "BSSID", "RSS", "frequency", "LocationTimestamp", "Latitude", "Longitude", "Altitude", "Accuracy", "Bearing", "Speed", "Provider"));
-        headerCounts.addAll(Arrays.asList(4, 2, 2, 2, 4, 4, 5, 10));
+        allData.addAll(Arrays.asList(accelLines, accelUncalibratedLines, baroLines, lightLines, proxLines, gyroLines, gyroUncalibratedLines, magnetoLines, magnetoUncalibratedLines, wifiLines, locationLines));
+        headers.addAll(Arrays.asList("AccelTimestamp", "AccelX", "AccelY", "AccelZ","AccelTimestampUncalibrated", "AccelXUncalibrated", "AccelYUncalibrated", "AccelZUncalibrated", "BaroTimestamp", "Baro", "LightTimestamp", "Light", "ProxTimestamp", "Proximity", "GyroTimestamp", "GyroX", "GyroY", "GyroZ", "GyroTimestampUncalibrated", "GyroXUncalibrated", "GyroYUncalibrated", "GyroZUncalibrated","MagnetoTimestamp", "MagnetoX", "MagnetoY", "MagnetoZ", "MagnetoTimestampUncalibrated", "MagnetoXUncalibrated", "MagnetoYUncalibrated", "MagnetoZUncalibrated", "WiFiTimestamp", "SSID", "BSSID", "RSS", "frequency", "LocationTimestamp", "Latitude", "Longitude", "Altitude", "Accuracy", "Bearing", "Speed", "Provider"));
+        headerCounts.addAll(Arrays.asList(4, 4, 2, 2, 2, 4, 4, 4, 4, 5, 8));
 
         // Calculate the maximum number of lines from all sensor data lists
         maxLines = allData.stream().mapToInt(List::size).max().orElse(0);
@@ -564,7 +612,7 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
                 }
                 // Append commas to skip empty columns
                 for (int j = 0; j < skipColumns; j++) {
-                    line.append(",");
+                    line.append("0,");
                 }
             }
             combinedData.add(line.toString());

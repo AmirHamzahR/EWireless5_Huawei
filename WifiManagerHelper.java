@@ -6,7 +6,6 @@ import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
-import android.widget.Chronometer;
 import android.widget.TextView;
 
 import java.util.List;
@@ -21,7 +20,6 @@ public class WifiManagerHelper{
     private TimerTask scanTaskWifi;
     private WifiScanResultHandler wifiScanResultHandler;
     protected Timer timerWifi;
-    protected String wifiCsvData;
     protected TextView wifiTextView;
     protected TextView wifiStatusView;
     protected TextView wifiInfoView;
@@ -32,6 +30,7 @@ public class WifiManagerHelper{
     protected double timestamp;
     protected long initialTimeNs;
     private long timestampNs;
+    protected StringBuilder wifiCsvData = new StringBuilder();
 
     public WifiManagerHelper(Context context, WifiScanResultHandler wifiScanResultHandler) {
         this.context = context;
