@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.ScanResult;
+import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.widget.TextView;
@@ -26,7 +27,6 @@ public class WifiManagerHelper{
     protected TextView wifiConnectionView;
     protected float measuredWifiFreq;
     protected double lastWifiTimestamp;
-    protected String wifiFeaturesText;
     protected double timestamp;
     protected long initialTimeNs;
     private long timestampNs;
@@ -59,7 +59,9 @@ public class WifiManagerHelper{
             } else {
                 wifiStatusView.setText( "\n" + " WIFI: Switched ON");
                 wifiStatusView.setBackgroundColor(0x00FF00); //lime green color
-                wifiStr = "\n" + " WiFi MAC address: " + wifiManager.getConnectionInfo().getMacAddress();
+                WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+                String macAddress = wifiInfo.getBSSID();
+                wifiStr = "\n" + " WiFi MAC address: " + macAddress;
             }
         } else {
             wifiStatusView.setText("\n" + " WIFI: Not available");
@@ -100,11 +102,6 @@ public class WifiManagerHelper{
 
         // Schedule the timer to run the scanTaskWifi every 10 seconds
         timerWifi.schedule(scanTaskWifi, 3000, 3000);
-    }
-
-
-    public WifiScanReceiver getWifiScanReceiver() {
-        return wifiScanReceiver;
     }
 
 

@@ -2,7 +2,6 @@ package com.example.datacollectionapp_afp;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.PendingIntent;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.location.GnssStatus;

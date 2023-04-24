@@ -247,13 +247,6 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
         wifiManagerHelper.measuredWifiFreq = (float) (0.8 * wifiManagerHelper.measuredWifiFreq + 0.2 / (wifiManagerHelper.timestamp - wifiManagerHelper.lastWifiTimestamp));
         wifiManagerHelper.lastWifiTimestamp = wifiManagerHelper.timestamp;
 
-        if (wifiManagerHelper.wifiManager.isWifiEnabled()) {
-            wifiManagerHelper.wifiStatusView.setBackgroundColor(0xFF00FF00);
-            wifiManagerHelper.wifiStatusView.setText("\n" + " WIFI: Switched ON");
-            wifiManagerHelper.wifiFeaturesText = "\n" + " WiFi MAC address: " + wifiManagerHelper.wifiManager.getConnectionInfo().getMacAddress();
-            wifiManagerHelper.wifiInfoView.setText(wifiManagerHelper.wifiFeaturesText);
-        }
-
         WifiInfo wifiInfo = wifiManagerHelper.wifiManager.getConnectionInfo();
         if (wifiInfo.getBSSID() != null) {
             String displayString = String.format(Locale.US, "\n" + " Connected to: %s\n\tBSSID: %s\n\tRSSI: %d dBm \n\tLinkSpeed: %d Mbps\n\t\t\t\t\t\t\t\tFreq: %5.1f Hz", wifiInfo.getSSID(), wifiInfo.getBSSID(), wifiInfo.getRssi(), wifiInfo.getLinkSpeed(), wifiManagerHelper.measuredWifiFreq);
@@ -588,7 +581,7 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
         }
 
         allData.addAll(Arrays.asList(accelLines, accelUncalibratedLines, baroLines, lightLines, proxLines, gyroLines, gyroUncalibratedLines, magnetoLines, magnetoUncalibratedLines, wifiLines, locationLines));
-        headers.addAll(Arrays.asList("AccelTimestamp", "AccelX", "AccelY", "AccelZ","AccelTimestampUncalibrated", "AccelXUncalibrated", "AccelYUncalibrated", "AccelZUncalibrated", "BaroTimestamp", "Baro", "LightTimestamp", "Light", "ProxTimestamp", "Proximity", "GyroTimestamp", "GyroX", "GyroY", "GyroZ", "GyroTimestampUncalibrated", "GyroXUncalibrated", "GyroYUncalibrated", "GyroZUncalibrated","MagnetoTimestamp", "MagnetoX", "MagnetoY", "MagnetoZ", "MagnetoTimestampUncalibrated", "MagnetoXUncalibrated", "MagnetoYUncalibrated", "MagnetoZUncalibrated", "WiFiTimestamp", "SSID", "BSSID", "RSS", "frequency", "LocationTimestamp", "Latitude", "Longitude", "Altitude", "Accuracy", "Bearing", "Speed", "Provider"));
+        headers.addAll(Arrays.asList("AccelTimestamp", "acc_bias_x[m/s^2]", "acc_bias_y[m/s^2]", "acc_bias_z[m/s^2]","AccelTimestampUncalibrated", "acc_uncal_x[m/s^2]", "acc_uncal_y[m/s^2]", "acc_uncal_z[m/s^2]", "BaroTimestamp", "Baro", "LightTimestamp", "ambient_brightness[lux]", "ProxTimestamp", "Proximity", "GyroTimestamp", "ang_vel_bias_x[rad/s]", "ang_vel_bias_y[rad/s]", "ang_vel_bias_z[rad/s]", "GyroTimestampUncalibrated", "ang_vel_uncal_x[rad/s]", "ang_vel_uncal_y[rad/s]", "ang_vel_uncal_z[rad/s]","MagnetoTimestamp", "mfield_bias_x[uT]", "mfield_bias_y[uT]", "mfield_bias_z[uT]", "MagnetoTimestampUncalibrated", "mfield_uncal_x[uT]", "mfield_uncal_y[uT]", "mfield_uncal_z[uT]", "WiFiTimestamp", "SSID", "BSSID", "RSS", "frequency", "LocationTimestamp", "lat (deg)", "long (deg)", "altitude (m above sea level)", "accuracy (m)", "bearing (degrees)", "speed (m/s over ground)", "Provider"));
         headerCounts.addAll(Arrays.asList(4, 4, 2, 2, 2, 4, 4, 4, 4, 5, 8));
 
         // Calculate the maximum number of lines from all sensor data lists
@@ -619,8 +612,6 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
         }
         writeDataToCsv(fileName, combinedData, headers);
     }
-
-
 
     private void writeDataToCsv(String fileName, List<String> allData, List<String> headers) {
         File directory = getExternalFilesDir(null);
