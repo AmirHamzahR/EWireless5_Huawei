@@ -227,18 +227,14 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
         String wifiStr = "";
 
         // Get the elapsed time from the chronometer in milliseconds
-        long elapsedMillis = SystemClock.elapsedRealtime() - mChronometer.getBase();
-
-        // Convert the elapsed time to seconds
-        double elapsedSeconds = elapsedMillis / 1000.0;
-
         for (ScanResult result : scanResults) {
             String SSID = result.SSID, BSSID = result.BSSID;
             int frequency = result.frequency;
+            double wifitimestamp = result.timestamp/1000;
             int RSS = result.level;
             wifiStr +=  "\n\t- " + SSID + ",\t" + BSSID + ",\tRSS:" + RSS + " dBm";
             // Updating the wifi data for CSV
-            wifiManagerHelper.wifiCsvData.append(String.format(Locale.US, "%.5f,%s,%s,%d,%d\n", elapsedSeconds, SSID, BSSID, RSS, frequency));
+            wifiManagerHelper.wifiCsvData.append(String.format(Locale.US, "%d, %.5f,%s,%s,%d,%d\n", numAPs, wifitimestamp, SSID, BSSID, RSS, frequency));
         }
 
         String text = "\n" + " Number of Wifi APs: " + numAPs + wifiStr;
@@ -580,8 +576,8 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
         }
 
         allData.addAll(Arrays.asList(accelLines, accelUncalibratedLines, baroLines, lightLines, proxLines, gyroLines, gyroUncalibratedLines, magnetoLines, magnetoUncalibratedLines, wifiLines, locationLines));
-        headers.addAll(Arrays.asList("AccelTimestamp", "acc_bias_x[m/s^2]", "acc_bias_y[m/s^2]", "acc_bias_z[m/s^2]","AccelTimestampUncalibrated", "acc_uncal_x[m/s^2]", "acc_uncal_y[m/s^2]", "acc_uncal_z[m/s^2]", "BaroTimestamp", "Baro", "LightTimestamp", "ambient_brightness[lux]", "ProxTimestamp", "Proximity", "GyroTimestamp", "ang_vel_bias_x[rad/s]", "ang_vel_bias_y[rad/s]", "ang_vel_bias_z[rad/s]", "GyroTimestampUncalibrated", "ang_vel_uncal_x[rad/s]", "ang_vel_uncal_y[rad/s]", "ang_vel_uncal_z[rad/s]","MagnetoTimestamp", "mfield_bias_x[uT]", "mfield_bias_y[uT]", "mfield_bias_z[uT]", "MagnetoTimestampUncalibrated", "mfield_uncal_x[uT]", "mfield_uncal_y[uT]", "mfield_uncal_z[uT]", "WiFiTimestamp", "SSID", "BSSID", "RSS", "frequency", "LocationTimestamp", "lat (deg)", "long (deg)", "altitude (m above sea level)", "accuracy (m)", "bearing (degrees)", "speed (m/s over ground)", "Provider"));
-        headerCounts.addAll(Arrays.asList(4, 4, 2, 2, 2, 4, 4, 4, 4, 5, 8));
+        headers.addAll(Arrays.asList("AccelTimestamp", "acc_bias_x[m/s^2]", "acc_bias_y[m/s^2]", "acc_bias_z[m/s^2]","AccelTimestampUncalibrated", "acc_uncal_x[m/s^2]", "acc_uncal_y[m/s^2]", "acc_uncal_z[m/s^2]", "BaroTimestamp", "Baro", "LightTimestamp", "ambient_brightness[lux]", "ProxTimestamp", "Proximity", "GyroTimestamp", "ang_vel_bias_x[rad/s]", "ang_vel_bias_y[rad/s]", "ang_vel_bias_z[rad/s]", "GyroTimestampUncalibrated", "ang_vel_uncal_x[rad/s]", "ang_vel_uncal_y[rad/s]", "ang_vel_uncal_z[rad/s]","MagnetoTimestamp", "mfield_bias_x[uT]", "mfield_bias_y[uT]", "mfield_bias_z[uT]", "MagnetoTimestampUncalibrated", "mfield_uncal_x[uT]", "mfield_uncal_y[uT]", "mfield_uncal_z[uT]", "wifinum", "WiFiTimestamp", "SSID", "BSSID", "RSS", "frequency", "LocationTimestamp", "lat (deg)", "long (deg)", "altitude (m above sea level)", "accuracy (m)", "bearing (degrees)", "speed (m/s over ground)", "Provider"));
+        headerCounts.addAll(Arrays.asList(4, 4, 2, 2, 2, 4, 4, 4, 4, 6, 8));
 
         // Calculate the maximum number of lines from all sensor data lists
         maxLines = allData.stream().mapToInt(List::size).max().orElse(0);
