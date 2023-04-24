@@ -331,7 +331,6 @@ public class MainActivity extends AppCompatActivity implements WifiScanResultHan
 
             double latitude = location.getLatitude(), longitude = location.getLongitude(), altitude = location.getAltitude();
             float bearing = location.getBearing(), accuracy = location.getAccuracy(), speed = location.getSpeed();
-            //double sensorTimestamp = location.getTime() / 1000.0;
             String provider = location.getProvider();
 
             // Calculate the elapsed time in seconds
