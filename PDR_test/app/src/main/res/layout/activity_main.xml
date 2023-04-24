@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.example.pdr_test.TrajectoryView
+        android:id="@+id/trajectory_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="11dp"
+        android:background="@android:color/white" />
+
+    <SeekBar
+        android:id="@+id/process_noise_slider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="624dp"
+        android:max="100" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/measurement_noise_slider"
+        android:layout_marginBottom="7dp"
+        android:text="Measurement Noise Slider" />
+
+
+    <Button
+        android:id="@+id/toggle_move_marker_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/textView3"
+        android:layout_marginTop="581dp"
+        android:text="Set Marker" />
+
+    <SeekBar
+        android:id="@+id/measurement_noise_slider"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/process_noise_slider"
+        android:layout_marginBottom="38dp"
+        android:max="100" />
+
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/process_noise_slider"
+        android:layout_marginBottom="10dp"
+        android:text="Process Noise Slider" />
+
+    <Button
+        android:id="@+id/save_points_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/process_noise_slider"
+        android:layout_marginBottom="-569dp"
+        android:text="Save Trajectory" />
+
+    <Button
+        android:id="@+id/reset_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/process_noise_slider"
+        android:layout_marginBottom="-514dp"
+        android:text="Reset" />
+
+    <Button
+        android:id="@+id/chooseFloorButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/process_noise_slider"
+        android:layout_marginBottom="-458dp"
+        android:text="Choose Floor" />
+
+
+</RelativeLayout>
