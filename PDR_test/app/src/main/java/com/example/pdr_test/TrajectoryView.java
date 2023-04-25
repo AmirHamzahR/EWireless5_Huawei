@@ -1,5 +1,6 @@
 package com.example.pdr_test;
 
+import static com.example.pdr_test.MainActivity.selectedBuilding;
 import static com.example.pdr_test.MainActivity.startPDR;
 
 import android.content.Context;
@@ -12,6 +13,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
@@ -22,8 +24,10 @@ import com.example.pdr_test.R;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class TrajectoryView extends View {
+    public StringBuilder pointsCsv = new StringBuilder();
     public Paint paint;
     public Path path;
     public List<PointF> points = new ArrayList<>();
@@ -38,7 +42,6 @@ public class TrajectoryView extends View {
     public Paint markerPaint;
     private float pathLengthScaleFactor = 0.6f; // Adjust this value to make the path longer or shorter
 
-
     public TrajectoryView(Context context) {
         super(context);
         init(context);
@@ -49,16 +52,36 @@ public class TrajectoryView extends View {
         init(context);
     }
 
-    private void init(Context context) {
+    public TrajectoryView(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        init(context);
+    }
+
+    public TrajectoryView(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
+        init(context);
+    }
+
+    public void init(Context context) {
+        Log.d("TrajectoryView", "Selected building: " + selectedBuilding);
         paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Color.BLUE);
         paint.setStyle(Paint.Style.STROKE);
         paint.setStrokeWidth(7);
         path = new Path();
+        markerPosition = new PointF(0,0); // Initialize markerPosition
+        points = new ArrayList<>();
 
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 4;
-        floorPlan = BitmapFactory.decodeResource(getResources(), R.drawable.groundfloor, options);
+
+        if(selectedBuilding.equals("Nucleus Building")) {
+            options.inSampleSize = 4;
+            floorPlan = BitmapFactory.decodeResource(getResources(), R.drawable.groundfloor, options);
+        }
+        else if(selectedBuilding.equals("Murray Library")){
+            options.inSampleSize = 2;
+            floorPlan = BitmapFactory.decodeResource(getResources(), R.drawable.murray_library_ground_floor, options);
+        }
 
         getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -136,10 +159,15 @@ public class TrajectoryView extends View {
         }
     }
 
-    public void changeFloor(int floorResourceId) {
+    public void changeFloor(int floorResourceId, String Building) {
         resetPath();
         BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inSampleSize = 4;
+        if(Building.equals("Nucleus Building")) {
+            options.inSampleSize = 3;
+        }
+        else if(Building.equals("Murray Library")){
+            options.inSampleSize = 2;
+        }
         floorPlan = BitmapFactory.decodeResource(getResources(), floorResourceId, options);
         Toast.makeText(getContext(), "Changing floors detected. Resetting everything, saving!", Toast.LENGTH_SHORT).show();
         invalidate(); // Redraw the view
@@ -147,11 +175,13 @@ public class TrajectoryView extends View {
 
 
     public void resetPath() {
-        points.clear();
-        CSVExporter.savePointsToCSV(this.points);
         markerSet = false;
         startPDR = false;
         invalidate();
+    }
+
+    public void resetPoints(){
+        points.clear();
     }
 
     @Override
@@ -195,10 +225,8 @@ public class TrajectoryView extends View {
     }
 
     public void addPoint(float x, float y) {
-        float scaledX = x;; // Adjust scaleFactor if needed
-        float scaledY = y; // Adjust scaleFactor if needed
-
-        points.add(new PointF(scaledX, scaledY));
+        pointsCsv.append(String.format(Locale.getDefault(),"%.3f,%.3f\n", x, y));
+        points.add(new PointF(x, y));
         invalidate();
     }
 }

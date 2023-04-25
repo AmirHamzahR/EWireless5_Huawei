@@ -10,6 +10,17 @@
         android:layout_marginBottom="11dp"
         android:background="@android:color/white" />
 
+    <!-- Add this TextView for the Chronometer -->
+    <Chronometer
+        android:id="@+id/chronometer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:padding="16dp" />
+
+    <!-- Rest of the layout -->
+
     <SeekBar
         android:id="@+id/process_noise_slider"
         android:layout_width="match_parent"
@@ -25,7 +36,6 @@
         android:layout_above="@+id/measurement_noise_slider"
         android:layout_marginBottom="7dp"
         android:text="Measurement Noise Slider" />
-
 
     <Button
         android:id="@+id/toggle_move_marker_button"
@@ -52,28 +62,19 @@
         android:text="Process Noise Slider" />
 
     <Button
-        android:id="@+id/save_points_button"
+        android:id="@+id/resetSaveButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/process_noise_slider"
-        android:layout_marginBottom="-569dp"
-        android:text="Save Trajectory" />
-
-    <Button
-        android:id="@+id/reset_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/process_noise_slider"
-        android:layout_marginBottom="-514dp"
-        android:text="Reset" />
+        android:layout_marginBottom="-570dp"
+        android:text="Reset/Save" />
 
     <Button
         android:id="@+id/chooseFloorButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/process_noise_slider"
-        android:layout_marginBottom="-458dp"
+        android:layout_marginBottom="-514dp"
         android:text="Choose Floor" />
-
 
 </RelativeLayout>
